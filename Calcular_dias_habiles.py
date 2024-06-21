@@ -7,44 +7,59 @@ from datetime import timedelta  # Importa la clase timedelta del módulo datetim
 
 warnings.filterwarnings("ignore")  # Ignora las advertencias durante la ejecución
 
-# Feriados
-directorio_modulo = os.path.dirname(os.path.abspath(__file__))  # Obtiene el directorio del módulo actual
-ruta_relativa_archivo = os.path.join(directorio_modulo, "data", "feriados.xlsx")  # Construye la ruta al archivo de feriados
-feriados = pd.read_excel(ruta_relativa_archivo)['Feriados'].apply(lambda x: x.date()).tolist()  # Lee los feriados del archivo y los convierte a una lista de objetos de fecha
+# Leemos los feriados desde el archivo (este archivo se debe verificar que este actualizado con los feriados de todo el periodo a evaluar)
+directorio_modulo = os.path.dirname(os.path.abspath(__file__))
+ruta_relativa_feriados = os.path.join(directorio_modulo, "data", "feriados.xlsx")
+feriados = pd.read_excel(ruta_relativa_feriados)['Feriados'].apply(lambda x: x.date()).tolist()
+
+# Parámetros dinámicos
+Fecha_Inicio = "Fecha_Inicio"  # Ingrese la fecha de inicio
+Fecha_Fin = "Fecha_Fin"     # Ingrese la fecha de fin
+Fecha_para_vacios = "17/06/2024" # En caso la celda de fecha fin este vacia, entonces rellenaremos con esta fecha para el calculo de dias habiles
+
+# Creamos nombres para las columnas auxiliares
+Fecha_Inicio_AUX = Fecha_Inicio + "_AUX"
+Fecha_Fin_AUX = Fecha_Fin + "_AUX"
+    
+# Ingrese el nombre del archivo de entrada y el nombre de su salida
+ruta_relativa_archivo = "prueba.xlsx"
+ruta_salida_archivo = "salida.xlsx"
 
 # Función para capturar la hora actual (ayudará a determinar el tiempo de demora para ejecutar el programa)
 def obtener_hora_actual():
     return datetime.datetime.now()  # Devuelve la hora actual del sistema
 
-def calcular_dias(row):
-    row['DIAS_CALCULADOS'] = np.busday_count(row['Fecha_Inicio_AUX'].date() + timedelta(days=1), row['Fecha_Fin_AUX'].date() + timedelta(days=1), holidays=feriados)  # Calcula la cantidad de días hábiles entre dos fechas, excluyendo los feriados
-    return row
+# Definimos la función para calcular los días hábiles entre dos fechas, excluyendo feriados y fines de semana
+def calcular_dias_habiles(row):
+    return np.busday_count(row[Fecha_Inicio_AUX].date() + timedelta(days=1), row[Fecha_Fin_AUX].date() + timedelta(days=1), holidays=feriados)
 
 def main():
     hora_inicio = obtener_hora_actual()  # Registra la hora de inicio del proceso
-
-    df_excel_de_entrada_global = "Excel_prueba.xlsx"  # Nombre del archivo Excel de entrada
-    df = pd.read_excel(df_excel_de_entrada_global)  # Lee el archivo Excel de entrada y carga los datos en un DataFrame
-    excel_de_salida_global = "Excel_prueba_calculado.xlsx"  # Nombre del archivo Excel de salida
-
-    print("Calculando días. Espere un momento por favor (dependiendo del tamaño puede tardar unos minutos)...")
-
-    # Convierte las fechas de inicio y fin del DataFrame a objetos de fecha y hora (usaremos auxiiares para no modificar los originales)
-    df['Fecha_Inicio_AUX'] = pd.to_datetime(df['Fecha_Inicio'], format='%d/%m/%Y')
-    df['Fecha_Fin_AUX'] = pd.to_datetime(df['Fecha_Fin'], format='%d/%m/%Y')
-
-    # Aplica la función 'calcular_dias' a cada fila del DataFrame para calcular los días hábiles
-    df = df.apply(calcular_dias, axis=1)
-
-    # Elimina las columnas auxiliares utilizadas para cálculos
-    df.drop(columns=['Fecha_Inicio_AUX', 'Fecha_Fin_AUX'], inplace=True)
-
-    # Guarda el DataFrame modificado en un nuevo archivo Excel
-    df.to_excel(excel_de_salida_global, sheet_name='CALCULO', index=False)
-
-    hora_final = obtener_hora_actual()  # Registra la hora de finalización del proceso
-    print(f"Creación Exitosa. Proceso terminado. Datos guardados en '{excel_de_salida_global}'.")
     
+    df = pd.read_excel(ruta_relativa_archivo)
+      
+    # Convertimos las columnas originales a objetos datetime y asignamos este valor a las columnas auxiliares, especificando dayfirst=True para evitar la advertencia
+    df[Fecha_Inicio_AUX] = pd.to_datetime(df[Fecha_Inicio], dayfirst=True)
+    
+    # Reemplazamos los valores vacíos en la columna auxiliar de fecha fin por la fecha predeterminada
+    df[Fecha_Fin_AUX] = df[Fecha_Fin].fillna(Fecha_para_vacios)
+    df[Fecha_Fin_AUX] = pd.to_datetime(df[Fecha_Fin_AUX], dayfirst=True)
+    
+    # Calculamos la diferencia en días hábiles entre las fechas en las columnas Fecha_inicio y Fecha_fin
+    df['Dias_transcurridos(habiles)'] = df.apply(calcular_dias_habiles, axis=1)
+    
+    # Eliminamos las columnas auxiliares
+    df = df.drop (Fecha_Inicio_AUX, axis = 1)
+    df = df.drop (Fecha_Fin_AUX, axis = 1)
+    
+    # Guardamos en nuestro nuevo archivo excel
+    df.to_excel(ruta_salida_archivo, index=False)
+    
+    print("Diferencia en días hábiles calculada y guardada en la columna 'Dias_transcurridos(habiles)'.")
+    
+    hora_final = obtener_hora_actual()  # Registra la hora de finalización del proceso
+    print(f"Creación Exitosa. Proceso terminado. Datos guardados en '{ruta_salida_archivo}'.")
+        
     # Calcula la diferencia de tiempo entre la hora de inicio y la hora de finalización
     tiempo_transcurrido = hora_final - hora_inicio
     print("Tiempo transcurrido:", tiempo_transcurrido)

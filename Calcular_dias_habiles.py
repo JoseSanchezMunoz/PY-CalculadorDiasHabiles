@@ -22,8 +22,8 @@ Fecha_Inicio_AUX = Fecha_Inicio + "_AUX"
 Fecha_Fin_AUX = Fecha_Fin + "_AUX"
     
 # Ingrese el nombre del archivo de entrada y el nombre de su salida
-ruta_relativa_archivo = "prueba.xlsx"
-ruta_salida_archivo = "salida.xlsx"
+ruta_relativa_archivo = "Excel_prueba.xlsx"
+ruta_salida_archivo = "Excel_prueba_calculado.xlsx"
 
 # Función para capturar la hora actual (ayudará a determinar el tiempo de demora para ejecutar el programa)
 def obtener_hora_actual():
